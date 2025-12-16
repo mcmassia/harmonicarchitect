@@ -9,9 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@tonaljs/tonal": "^4.10.0",
+    "clsx": "^2.1.1",
+    "firebase": "^12.6.0",
+    "lucide-react": "^0.561.0",
     "next": "16.0.10",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "tailwind-merge": "^3.4.0",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
