@@ -49,7 +49,7 @@ const createStringConfig = (noteStr: string, index: number, gauge: number, scale
 export const useTuningStore = create<TuningState>((set, get) => ({
     strings: DEFAULT_STRINGS.map((s, i) => createStringConfig(s, i, DEFAULT_GAUGES[i], 25.5)),
     scaleLength: 25.5,
-    analysis: [],
+    analysis: analyzeBarChords(DEFAULT_STRINGS), // Initialize with analysis of default strings
 
     updateString: (index, noteStr) => {
         const { strings, scaleLength } = get();

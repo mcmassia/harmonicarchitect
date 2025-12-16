@@ -8,6 +8,7 @@ import { MarkedNoteAnalysis } from '@/components/analysis/MarkedNoteAnalysis';
 import { ChordScaleSelector } from '@/components/selectors/ChordScaleSelector';
 import { Header } from '@/components/layout/Header';
 import { TuningManager } from '@/components/tuning/TuningManager';
+import { TuningDashboard } from '@/components/analysis/TuningDashboard';
 import { useMarkedNotesStore } from '@/store/markedNotesStore';
 import { useChordScaleStore } from '@/store/chordScaleStore';
 import { Share2, PanelLeftClose, PanelLeftOpen, MousePointer2, Music2, Guitar } from 'lucide-react';
@@ -138,6 +139,13 @@ export default function Home() {
               analysis={selectedAnalysis}
             />
           </section>
+
+          {/* Tuning Dashboard - Only in analysis mode */}
+          {currentMode === 'analysis' && (
+            <section className="mb-6">
+              <TuningDashboard />
+            </section>
+          )}
 
           {/* Analysis Grid & Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
