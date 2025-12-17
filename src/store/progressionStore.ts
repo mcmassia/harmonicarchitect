@@ -6,7 +6,9 @@ import {
     ProgressionGenerationOptions,
     AlgorithmOptions,
     DEFAULT_ALGORITHM_OPTIONS,
-    generateProgressions
+    generateProgressions,
+    generateVoicingsForChord,
+    calculateVoiceLeadingScore
 } from '@/lib/music/composer';
 import { Tablature, generateTablature } from '@/lib/music/tablature';
 import { playProgression, stopPlayback, isPlaying as checkIsPlaying } from '@/lib/audio/player';
@@ -74,6 +76,9 @@ interface ProgressionState {
     deleteProgression: (id: string) => void;
     deleteTablature: (id: string) => void;
     loadFromSaved: (progression: Progression) => void;
+
+    // Edición de acordes
+    replaceChordInProgression: (progressionId: string, chordIndex: number, newChordName: string) => void;
 
     // Estado
     clearGenerated: () => void;
@@ -289,9 +294,62 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
     },
 
     loadFromSaved: (progression) => {
-        const tablature = generateTablature(progression);
+        // Get current tuning
+        const tuningState = useTuningStore.getState();
+        const currentTuning = tuningState.strings.map(s => s.note.scientific);
+
+        let loadedProgression = progression;
+
+        // Check if tuning matches
+        // Note: checking length and note values
+        const isSameTuning = progression.tuning.length === currentTuning.length &&
+            progression.tuning.every((note, idx) => note === currentTuning[idx]);
+
+        if (!isSameTuning) {
+            console.log("Tuning mismatch, regenerating voicings...");
+
+            // Regenerate voicings for current tuning
+            const newVoicings = progression.voicings.map(oldVoicing => {
+                const options = generateVoicingsForChord(oldVoicing.chord, currentTuning, 5);
+                // Return best voicing or dummy if none found
+                return options.length > 0
+                    ? { ...options[0], chord: oldVoicing.chord }
+                    : {
+                        chord: oldVoicing.chord,
+                        frets: Array(currentTuning.length).fill(-1),
+                        fingers: Array(currentTuning.length).fill(0),
+                        ergonomyScore: 0,
+                        droneStrings: [],
+                        bassNote: '',
+                        notes: []
+                    };
+            });
+
+            // Recalculate scores
+            const ergonomyAvg = Math.round(
+                newVoicings.reduce((sum, v) => sum + v.ergonomyScore, 0) / newVoicings.length
+            );
+
+            let voiceLeadingTotal = 0;
+            for (let i = 1; i < newVoicings.length; i++) {
+                voiceLeadingTotal += calculateVoiceLeadingScore(newVoicings[i - 1], newVoicings[i]);
+            }
+            const voiceLeadingScore = newVoicings.length > 1
+                ? Math.round(voiceLeadingTotal / (newVoicings.length - 1))
+                : 100;
+
+            loadedProgression = {
+                ...progression,
+                tuning: currentTuning,
+                voicings: newVoicings,
+                ergonomyAvg,
+                voiceLeadingScore
+            };
+        }
+
+        const tablature = generateTablature(loadedProgression);
         set({
-            selectedProgression: progression,
+            selectedProgression: loadedProgression,
             currentTablature: tablature,
             continueFromProgression: null // Reset continue mode
         });
@@ -304,6 +362,62 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
             selectedProgression: null,
             currentTablature: null,
             isPlaying: false
+        });
+    },
+
+    replaceChordInProgression: (progressionId, chordIndex, newChordName) => {
+        const { generatedProgressions, selectedProgression } = get();
+
+        // Get current tuning
+        const tuningState = useTuningStore.getState();
+        const tuning = tuningState.strings.map(s => s.note.scientific);
+
+        // Generate voicings for the new chord
+        const newVoicings = generateVoicingsForChord(newChordName, tuning, 5);
+        if (newVoicings.length === 0) return; // No valid voicing found
+
+        const newVoicing = { ...newVoicings[0], chord: newChordName };
+
+        // Update the progression
+        const updatedProgressions = generatedProgressions.map(prog => {
+            if (prog.id !== progressionId) return prog;
+
+            const updatedVoicings = [...prog.voicings];
+            updatedVoicings[chordIndex] = newVoicing;
+
+            // Recalculate scores
+            const ergonomyAvg = Math.round(
+                updatedVoicings.reduce((sum, v) => sum + v.ergonomyScore, 0) / updatedVoicings.length
+            );
+
+            // Recalculate voice leading score
+            let voiceLeadingTotal = 0;
+            for (let i = 1; i < updatedVoicings.length; i++) {
+                voiceLeadingTotal += calculateVoiceLeadingScore(updatedVoicings[i - 1], updatedVoicings[i]);
+            }
+            const voiceLeadingScore = updatedVoicings.length > 1
+                ? Math.round(voiceLeadingTotal / (updatedVoicings.length - 1))
+                : 100;
+
+            // Update name
+            const newName = updatedVoicings.map(v => v.chord).join(' - ');
+
+            return {
+                ...prog,
+                voicings: updatedVoicings,
+                name: newName,
+                ergonomyAvg,
+                voiceLeadingScore
+            };
+        });
+
+        // Find the updated progression
+        const updatedProgression = updatedProgressions.find(p => p.id === progressionId);
+
+        set({
+            generatedProgressions: updatedProgressions,
+            selectedProgression: selectedProgression?.id === progressionId ? updatedProgression : selectedProgression,
+            currentTablature: updatedProgression ? generateTablature(updatedProgression) : null
         });
     }
 }));

@@ -1,6 +1,8 @@
 import { useTuningStore } from '@/store/tuningStore';
-import { Music2, Sparkles } from 'lucide-react';
+import { useSavedChordsStore } from '@/store/savedChordsStore';
+import { Music2, Sparkles, Bookmark, Play } from 'lucide-react';
 import { clsx } from "clsx";
+import { playArpeggio } from '@/lib/audio/player';
 import { StringGroupAnalysis } from '@/types/music';
 import { useState } from 'react';
 import { Interval } from "@tonaljs/tonal";
@@ -54,16 +56,6 @@ function AnalysisCardItem({ group, isMidwest, isSelected, onSelect }: {
     isSelected: boolean | null,
     onSelect?: (val: StringGroupAnalysis) => void
 }) {
-    // If user selected a root, recalculate intervals relative to it.
-    // If not, use the detected intervals from analysis.
-
-    // We should allow clicking a note to TRIGGER selection update in parent?
-    // The previous implementation used local state `userRoot` which only affected DISPLAY intervals.
-    // The user requirement is "el intervalo ... no se calcula correctamente". 
-    // And "reanalyzeGroup" logic was added to lib.
-    // So when user clicks a note, we should call `reanalyzeGroup` and then `onSelect(newGroup)`.
-    // This lifts the state up and ensures the "selectedAnalysis" in Page is the reanalyzed one.
-
     const handleNoteClick = (e: React.MouseEvent, note: string) => {
         e.stopPropagation();
         import('@/lib/music/analysis').then(({ reanalyzeGroup }) => {
@@ -72,39 +64,60 @@ function AnalysisCardItem({ group, isMidwest, isSelected, onSelect }: {
         });
     };
 
-    // Since we are now updating the PARENT state (selectedAnalysis), we can rely on `group` props being the source of truth if `isSelected` matches?
-    // Wait, the `group` passed here is from `tuningStore.analysis` list. 
-    // The `selectedAnalysis` in `page.tsx` is separate state.
-    // If we select a group and reanalyze it, `selectedAnalysis` becomes a Modified Copy of the group.
-    // The `tuningStore` list is unchanged.
-    // Ideally, we want to show the MODIFIED intervals in the detail view AND on the Fretboard (which uses selectedAnalysis).
-    // Does this card need to show the modified intervals?
-    // If `isSelected` is true, we might want to check if `selectedAnalysis` (passed from parent?) matches this modification?
-    // But `selectedAnalysis` is not passed to `AnalysisCardItem` fully, only `isSelected` boolean.
-    // Let's rely on standard display for the LIST items (default root).
-    // And if the user clicks a note, it updates the `selectedAnalysis` which updates the DETAILS panel and FRETBOARD.
-    // Does the CARD itself need to update? 
-    // "al seleccionar la tónica en las tarjetas ... el intervalo ... no se calcula correctamente"
-    // Usually means looking at the card.
-    // If I click 'E' on the card, I want THAT card to show the new intervals.
-    // But that card is an item in a list from the Store.
-    // If I don't update the Store, the Card won't change unless I use local state override OR I pass the `selectedAnalysis` object back to the list to render "The Selected Version" instead of the "Store Version".
+    const { savedChords, saveChord, deleteChord } = useSavedChordsStore();
+    const savedChord = savedChords.find(c => c.name === group.chordName);
+    const isSaved = !!savedChord;
 
-    // Let's try passing `displayGroup` which is `isSelected ? selectedAnalysis : group`?
-    // We need to change `AnalysisCard` parent logic.
+    const handleSave = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isSaved) {
+            deleteChord(savedChord!.id);
+        } else {
+            saveChord(group.chordName);
+        }
+    };
+
+    const handlePlay = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        playArpeggio(group.notes);
+    };
 
     return (
-        <button
+        <div
             onClick={() => onSelect?.(group)}
             className={clsx(
-                "w-full text-left p-5 rounded-xl border relative overflow-hidden group transition-all duration-300",
+                "w-full text-left p-5 rounded-xl border relative overflow-hidden group transition-all duration-300 cursor-pointer",
                 isSelected
                     ? "bg-indigo-600/20 border-indigo-400 ring-1 ring-indigo-400"
                     : isMidwest
                         ? "bg-indigo-950/30 border-indigo-500/50 hover:bg-indigo-900/40"
                         : "bg-slate-900 border-slate-700 hover:border-slate-600 hover:bg-slate-800"
             )}>
-            {isMidwest && <Sparkles className="absolute top-3 right-3 text-indigo-400 w-5 h-5 animate-pulse" />}
+
+            <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+                {isMidwest && <Sparkles className="text-indigo-400 w-5 h-5 animate-pulse" />}
+
+                <button
+                    onClick={handlePlay}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                    title="Escuchar"
+                >
+                    <Play className="w-5 h-5" />
+                </button>
+
+                <button
+                    onClick={handleSave}
+                    className={clsx(
+                        "p-1.5 rounded-lg transition-all transform hover:scale-110",
+                        isSaved
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "text-slate-500 hover:text-white hover:bg-slate-800"
+                    )}
+                    title={isSaved ? "Eliminar de guardados" : "Guardar acorde"}
+                >
+                    <Bookmark className={clsx("w-5 h-5", isSaved && "fill-current")} />
+                </button>
+            </div>
 
             <div className="mb-2 flex items-baseline gap-2">
                 <span className="text-2xl font-black text-white">{group.chordName}</span>
@@ -147,6 +160,6 @@ function AnalysisCardItem({ group, isMidwest, isSelected, onSelect }: {
                     )
                 })}
             </div>
-        </button>
+        </div>
     );
 }

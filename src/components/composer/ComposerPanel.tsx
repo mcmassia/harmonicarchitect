@@ -5,7 +5,9 @@ import { useTuningStore } from '@/store/tuningStore';
 import { ProgressionCard } from './ProgressionCard';
 import { TablatureView } from './TablatureView';
 import { SavedProgressionsPanel } from './SavedProgressionsPanel';
+import { SavedChordsPanel } from './SavedChordsPanel';
 import { ChordSelector } from './ChordSelector';
+import { ChordEditModal } from './ChordEditModal';
 import {
     Sparkles,
     RefreshCw,
@@ -47,6 +49,8 @@ export function ComposerPanel() {
         stopPlaying,
         saveProgression,
         saveTablature,
+        savedProgressions,
+        replaceChordInProgression,
         // Playback options
         instrument,
         setInstrument,
@@ -58,6 +62,14 @@ export function ComposerPanel() {
     const [showSettings, setShowSettings] = useState(false);
     const [showAlgorithm, setShowAlgorithm] = useState(false);
     const [showSaved, setShowSaved] = useState(false);
+    const [showSavedChords, setShowSavedChords] = useState(false);
+
+    // Chord edit modal state
+    const [editingChord, setEditingChord] = useState<{
+        progressionId: string;
+        chordIndex: number;
+        chordName: string;
+    } | null>(null);
 
     const tuningDisplay = strings.map(s => s.note.name).reverse().join('-');
 
@@ -88,6 +100,18 @@ export function ComposerPanel() {
                         title="Progresiones guardadas"
                     >
                         <Layers className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={() => setShowSavedChords(!showSavedChords)}
+                        className={clsx(
+                            "p-2 rounded-lg transition-colors",
+                            showSavedChords
+                                ? "bg-amber-500/30 text-amber-300"
+                                : "bg-slate-800 text-slate-400 hover:text-white"
+                        )}
+                        title="Acordes guardados"
+                    >
+                        <Music className="w-5 h-5" />
                     </button>
                     <button
                         onClick={() => setShowAlgorithm(!showAlgorithm)}
@@ -468,9 +492,15 @@ export function ComposerPanel() {
                                 progression={prog}
                                 index={idx + 1}
                                 isSelected={selectedProgression?.id === prog.id}
+                                isSaved={savedProgressions.some(sp => sp.id === prog.id)}
                                 onSelect={() => selectProgression(prog.id)}
                                 onContinue={() => setContinueFrom(prog)}
                                 onSave={() => saveProgression(prog)}
+                                onChordEdit={(chordIndex) => setEditingChord({
+                                    progressionId: prog.id,
+                                    chordIndex,
+                                    chordName: prog.voicings[chordIndex].chord
+                                })}
                             />
                         ))}
                     </div>
@@ -552,6 +582,30 @@ export function ComposerPanel() {
                     onClose={() => setShowSaved(false)}
                 />
             )}
+
+            {/* Saved Chords Panel */}
+            {showSavedChords && (
+                <SavedChordsPanel
+                    onClose={() => setShowSavedChords(false)}
+                />
+            )}
+
+            {/* Chord Edit Modal */}
+            <ChordEditModal
+                isOpen={editingChord !== null}
+                currentChord={editingChord?.chordName ?? ''}
+                chordIndex={editingChord?.chordIndex ?? 0}
+                onApply={(newChordName) => {
+                    if (editingChord) {
+                        replaceChordInProgression(
+                            editingChord.progressionId,
+                            editingChord.chordIndex,
+                            newChordName
+                        );
+                    }
+                }}
+                onClose={() => setEditingChord(null)}
+            />
         </div>
     );
 }

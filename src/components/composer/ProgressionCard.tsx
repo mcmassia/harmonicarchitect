@@ -15,18 +15,22 @@ interface ProgressionCardProps {
     progression: Progression;
     index: number;
     isSelected: boolean;
+    isSaved: boolean;
     onSelect: () => void;
     onContinue: () => void;
     onSave: () => void;
+    onChordEdit: (chordIndex: number) => void;
 }
 
 export function ProgressionCard({
     progression,
     index,
     isSelected,
+    isSaved,
     onSelect,
     onContinue,
-    onSave
+    onSave,
+    onChordEdit
 }: ProgressionCardProps) {
     const chordNames = progression.voicings.map(v => v.chord);
 
@@ -74,12 +78,17 @@ export function ProgressionCard({
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onSave();
+                            if (!isSaved) onSave();
                         }}
-                        className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-slate-700 transition-colors"
-                        title="Guardar progresión"
+                        className={clsx(
+                            "p-1.5 rounded-lg transition-colors",
+                            isSaved
+                                ? "bg-amber-500/20 text-amber-400 cursor-default"
+                                : "bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-slate-700"
+                        )}
+                        title={isSaved ? "Progresión guardada" : "Guardar progresión"}
                     >
-                        <Bookmark className="w-4 h-4" />
+                        <Bookmark className={clsx("w-4 h-4", isSaved && "fill-amber-400")} />
                     </button>
                 </div>
             </div>
@@ -87,17 +96,23 @@ export function ProgressionCard({
             {/* Chord Sequence */}
             <div className="flex flex-wrap gap-1.5 mb-4">
                 {chordNames.map((chord, idx) => (
-                    <span
+                    <button
                         key={idx}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onChordEdit(idx);
+                        }}
                         className={clsx(
-                            "px-2 py-1 rounded text-sm font-mono font-medium",
+                            "px-2 py-1 rounded text-sm font-mono font-medium transition-all",
                             isSelected
-                                ? "bg-violet-500/30 text-violet-200"
-                                : "bg-slate-800 text-slate-300"
+                                ? "bg-violet-500/30 text-violet-200 hover:bg-violet-500/50"
+                                : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white",
+                            "cursor-pointer hover:scale-105"
                         )}
+                        title="Click para editar acorde"
                     >
                         {chord}
-                    </span>
+                    </button>
                 ))}
             </div>
 

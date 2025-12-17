@@ -4,6 +4,8 @@ import { Core, parseNote } from '@/lib/music/core';
 import { analyzeBarChords } from '@/lib/music/analysis';
 import { calculateTension } from '@/lib/music/tension';
 
+export type NoteDisplayMode = 'notes' | 'intervals';
+
 interface TuningState {
     strings: StringConfig[]; // Ordered 0=High to N=Low ? Or usually UI is vertical.
     // Let's adopt strictly: index 0 = Lowest Pitch String (Button on UI), last index = Highest Pitch String (Top).
@@ -21,6 +23,10 @@ interface TuningState {
     removeString: (index: number) => void;
     setScaleLength: (length: number) => void;
     setPreset: (tuning: Tuning) => void;
+
+    // UI State
+    noteDisplayMode: NoteDisplayMode;
+    toggleNoteDisplayMode: () => void;
 }
 
 const DEFAULT_STRINGS = ["E4", "B3", "G3", "D3", "A2", "E2"]; // Standard Tuning (High -> Low)
@@ -50,6 +56,13 @@ export const useTuningStore = create<TuningState>((set, get) => ({
     strings: DEFAULT_STRINGS.map((s, i) => createStringConfig(s, i, DEFAULT_GAUGES[i], 25.5)),
     scaleLength: 25.5,
     analysis: analyzeBarChords(DEFAULT_STRINGS), // Initialize with analysis of default strings
+    noteDisplayMode: 'notes',
+
+    toggleNoteDisplayMode: () => {
+        set(state => ({
+            noteDisplayMode: state.noteDisplayMode === 'notes' ? 'intervals' : 'notes'
+        }));
+    },
 
     updateString: (index, noteStr) => {
         const { strings, scaleLength } = get();

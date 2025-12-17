@@ -5,7 +5,8 @@ import { ChordVoicing } from '@/lib/music/composer';
 import { Copy, Download, Check, Grid3X3, List } from 'lucide-react';
 import { useState } from 'react';
 import { clsx } from 'clsx';
-import { Note } from '@tonaljs/tonal';
+import { Note, Interval } from '@tonaljs/tonal';
+import { useTuningStore } from '@/store/tuningStore';
 
 interface TablatureViewProps {
     tablature: Tablature;
@@ -139,6 +140,8 @@ interface ChordDiagramsViewProps {
 }
 
 function ChordDiagramsView({ bars, tuning }: ChordDiagramsViewProps) {
+    const { noteDisplayMode } = useTuningStore();
+
     return (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {bars.map((bar, idx) => (
@@ -147,6 +150,7 @@ function ChordDiagramsView({ bars, tuning }: ChordDiagramsViewProps) {
                     voicing={bar.voicing}
                     tuning={tuning}
                     index={idx + 1}
+                    displayMode={noteDisplayMode}
                 />
             ))}
         </div>
@@ -157,9 +161,10 @@ interface ChordDiagramProps {
     voicing: ChordVoicing;
     tuning: string[];
     index: number;
+    displayMode: 'notes' | 'intervals';
 }
 
-function ChordDiagram({ voicing, tuning, index }: ChordDiagramProps) {
+function ChordDiagram({ voicing, tuning, index, displayMode }: ChordDiagramProps) {
     const numStrings = tuning.length;
 
     // Reverse frets and tuning for correct display (bass = left, treble = right)
@@ -307,6 +312,28 @@ function ChordDiagram({ voicing, tuning, index }: ChordDiagramProps) {
                     const fretPos = fret - startFret;
                     const y = offsetY + (fretPos - 0.5) * fretSpacing;
 
+                    // Calculate label (Note or Interval)
+                    let label = fret.toString();
+                    if (displayMode === 'notes' || displayMode === 'intervals') {
+                        const stringNote = reversedTuning[stringIdx];
+                        const midi = Note.midi(stringNote);
+                        if (midi) {
+                            const noteName = Note.pitchClass(Note.fromMidi(midi + fret));
+
+                            if (displayMode === 'notes') {
+                                label = noteName;
+                            } else {
+                                // Interval mode
+                                const rootMatch = voicing.chord.match(/^([A-G][#b]?)/);
+                                if (rootMatch) {
+                                    const root = rootMatch[1];
+                                    const interval = Interval.distance(root, noteName);
+                                    label = interval.replace('M', '').replace('P', '').replace('m', 'b').replace('d', 'bb').replace('A', '#');
+                                }
+                            }
+                        }
+                    }
+
                     return (
                         <g key={`fret-pos-${stringIdx}`}>
                             <circle
@@ -325,7 +352,7 @@ function ChordDiagram({ voicing, tuning, index }: ChordDiagramProps) {
                                 textAnchor="middle"
                                 fontWeight="bold"
                             >
-                                {fret}
+                                {label}
                             </text>
                         </g>
                     );
