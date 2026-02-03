@@ -26,7 +26,8 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
         setSelectionMode,
         isInteractiveMode,
         toggleNote,
-        togglePosition
+        togglePosition,
+        analysis: storeAnalysis
     } = useMarkedNotesStore();
     const { chordNotes, scaleNotes, isChordScaleMode, selectedRoot } = useChordScaleStore();
 
@@ -363,9 +364,11 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                                     } else if (analysis) {
                                                         const idx = analysis.intervals.indexOf("1P");
                                                         if (idx >= 0) root = Note.pitchClass(analysis.notes[idx]);
-                                                    } else {
-                                                        // In interactive mode try to detect root from analysis if available
-                                                        // But we don't have analysis prop here usually
+                                                    } else if (isInteractiveMode && storeAnalysis.length > 0) {
+                                                        // Fallback for interactive mode: Use the first candidate analysis root
+                                                        const candidate = storeAnalysis[0];
+                                                        const idx = candidate.intervals.indexOf("1P");
+                                                        if (idx >= 0) root = Note.pitchClass(candidate.notes[idx]);
                                                     }
 
                                                     if (root) {
