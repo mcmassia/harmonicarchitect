@@ -6,7 +6,7 @@ import { useChordScaleStore } from '@/store/chordScaleStore';
 import { useMemo } from 'react';
 import { Note, Interval } from "@tonaljs/tonal";
 import { StringGroupAnalysis } from '@/types/music';
-import { Settings2, Music, Hash } from 'lucide-react';
+import { Settings2, Music, Hash, MousePointer2, BoxSelect } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const FRET_COUNT = 15; // Number of frets to render
@@ -19,7 +19,15 @@ interface FretboardProps {
 
 export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
     const { strings, scaleLength, noteDisplayMode, toggleNoteDisplayMode } = useTuningStore();
-    const { markedNotes, isInteractiveMode, toggleNote } = useMarkedNotesStore();
+    const {
+        markedNotes,
+        markedPositions,
+        selectionMode,
+        setSelectionMode,
+        isInteractiveMode,
+        toggleNote,
+        togglePosition
+    } = useMarkedNotesStore();
     const { chordNotes, scaleNotes, isChordScaleMode, selectedRoot } = useChordScaleStore();
 
     // Use analysis notes if available, otherwise fallback to highlightedNotes
@@ -38,7 +46,16 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
     }, [analysis]);
 
     const activePitchClasses = useMemo(() => new Set(activeNotes.map(n => Note.pitchClass(n))), [activeNotes]);
+
+    // Marked notes (pitch classes)
     const markedPitchClasses = useMemo(() => new Set(markedNotes), [markedNotes]);
+
+    // Marked positions (specific string/fret)
+    const markedPositionSet = useMemo(() => {
+        const set = new Set<string>();
+        markedPositions.forEach(p => set.add(`${p.stringIndex}-${p.fretIndex}`));
+        return set;
+    }, [markedPositions]);
 
     // Chord/Scale mode pitch classes
     const chordPitchClasses = useMemo(() => new Set(chordNotes), [chordNotes]);
@@ -64,16 +81,57 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
     const X_OPEN = 65; // Open strings at 65
     const X_LABEL = 20; // Labels at 20
 
-    const handleNoteClick = (pitchClass: string) => {
-        if (isInteractiveMode) {
-            toggleNote(pitchClass);
+    const handleNoteClick = (stringIndex: number, fretIndex: number, note: string) => {
+        if (!isInteractiveMode) return;
+
+        const pc = Note.pitchClass(note);
+
+        if (selectionMode === 'note') {
+            toggleNote(pc);
+        } else {
+            togglePosition(stringIndex, fretIndex, note);
         }
     };
 
     return (
         <div className="w-full bg-zinc-950 rounded-xl border border-zinc-800 shadow-inner overflow-hidden">
             {/* Toolbar */}
-            <div className="flex items-center justify-end px-4 py-2 bg-zinc-900 border-b border-zinc-800">
+            <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800">
+                {/* Left Side: Mode Toggles (Only in Interactive Mode) */}
+                <div className="flex items-center gap-2">
+                    {isInteractiveMode && (
+                        <div className="flex bg-zinc-800 rounded-lg p-0.5">
+                            <button
+                                onClick={() => setSelectionMode('note')}
+                                className={clsx(
+                                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                                    selectionMode === 'note'
+                                        ? "bg-zinc-700 text-white shadow-sm"
+                                        : "text-zinc-400 hover:text-zinc-200"
+                                )}
+                                title="Select by Note Name (All positions)"
+                            >
+                                <Music className="w-3.5 h-3.5" />
+                                <span>Por Nota</span>
+                            </button>
+                            <button
+                                onClick={() => setSelectionMode('position')}
+                                className={clsx(
+                                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                                    selectionMode === 'position'
+                                        ? "bg-zinc-700 text-white shadow-sm"
+                                        : "text-zinc-400 hover:text-zinc-200"
+                                )}
+                                title="Select Specific Positions"
+                            >
+                                <MousePointer2 className="w-3.5 h-3.5" />
+                                <span>Individual</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Side: Display Options */}
                 <button
                     onClick={toggleNoteDisplayMode}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-slate-300 transition-colors"
@@ -156,10 +214,14 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                 const isChordRoot = pc === chordRootPc && isInChord;
                                 const isInBoth = isInChord && isInScale;
 
-                                // In interactive mode, show all notes as clickable
-                                // In normal mode, only show highlighted notes
+                                // Analysis Highlighting (from prop)
                                 const isHighlighted = activePitchClasses.has(pc);
-                                const isMarked = markedPitchClasses.has(pc);
+
+                                // Marked State (depends on mode)
+                                const isMarkedByNote = markedPitchClasses.has(pc);
+                                const isMarkedByPosition = markedPositionSet.has(`${stringIndex}-${fretIndex}`);
+
+                                const isMarked = selectionMode === 'note' ? isMarkedByNote : isMarkedByPosition;
 
                                 // Determine visibility based on mode
                                 const showInChordScaleMode = isChordScaleMode && (isInChord || isInScale);
@@ -219,7 +281,7 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                 return (
                                     <g
                                         key={`note-${stringIndex}-${fretIndex}`}
-                                        onClick={() => handleNoteClick(pc)}
+                                        onClick={() => handleNoteClick(stringIndex, fretIndex, noteName)}
                                         style={{ cursor: isInteractiveMode ? 'pointer' : 'default' }}
                                     >
                                         {/* Chord root outer ring */}
@@ -301,6 +363,9 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                                     } else if (analysis) {
                                                         const idx = analysis.intervals.indexOf("1P");
                                                         if (idx >= 0) root = Note.pitchClass(analysis.notes[idx]);
+                                                    } else {
+                                                        // In interactive mode try to detect root from analysis if available
+                                                        // But we don't have analysis prop here usually
                                                     }
 
                                                     if (root) {
