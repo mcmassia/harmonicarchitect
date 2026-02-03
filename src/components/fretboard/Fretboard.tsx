@@ -208,18 +208,30 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                 const currentMidi = openMidi + fretIndex;
                                 const noteName = Note.fromMidi(currentMidi);
                                 const pc = Note.pitchClass(noteName);
+                                const enharmonicPc = Note.enharmonic(pc);
 
-                                // Check chord/scale membership
-                                const isInChord = chordPitchClasses.has(pc);
-                                const isInScale = scalePitchClasses.has(pc);
-                                const isChordRoot = pc === chordRootPc && isInChord;
+                                // Check chord/scale membership (check both spellings)
+                                const isInChord = chordPitchClasses.has(pc) || chordPitchClasses.has(enharmonicPc);
+                                const isInScale = scalePitchClasses.has(pc) || scalePitchClasses.has(enharmonicPc);
+
+                                // Determine the correct spelling for context
+                                let displayPc = pc;
+                                if (isInScale) {
+                                    displayPc = scalePitchClasses.has(pc) ? pc : enharmonicPc;
+                                } else if (isInChord) {
+                                    displayPc = chordPitchClasses.has(pc) ? pc : enharmonicPc;
+                                } else if (activePitchClasses.has(pc) || activePitchClasses.has(enharmonicPc)) {
+                                    displayPc = activePitchClasses.has(pc) ? pc : enharmonicPc;
+                                }
+
+                                const isChordRoot = (displayPc === chordRootPc || Note.enharmonic(displayPc) === chordRootPc) && isInChord;
                                 const isInBoth = isInChord && isInScale;
 
                                 // Analysis Highlighting (from prop)
-                                const isHighlighted = activePitchClasses.has(pc);
+                                const isHighlighted = activePitchClasses.has(pc) || activePitchClasses.has(enharmonicPc);
 
                                 // Marked State (depends on mode)
-                                const isMarkedByNote = markedPitchClasses.has(pc);
+                                const isMarkedByNote = markedPitchClasses.has(pc) || markedPitchClasses.has(enharmonicPc);
                                 const isMarkedByPosition = markedPositionSet.has(`${stringIndex}-${fretIndex}`);
 
                                 const isMarked = selectionMode === 'note' ? isMarkedByNote : isMarkedByPosition;
@@ -232,7 +244,7 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                 // Skip if not visible in any mode
                                 if (!showInChordScaleMode && !showInInteractiveMode && !showInAnalysisMode) return null;
 
-                                const isRoot = rootPitchClasses.has(pc);
+                                const isRoot = rootPitchClasses.has(displayPc) || rootPitchClasses.has(Note.enharmonic(displayPc));
 
                                 // Calculate X position
                                 let x = 0;
