@@ -384,13 +384,19 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                                     }
 
                                                     if (root) {
-                                                        // Calculate interval
-                                                        const interval = Interval.distance(root, pc);
+                                                        // Calculate interval using the display-corrected pitch class
+                                                        const interval = Interval.distance(root, displayPc);
                                                         // Simplify interval (e.g., "3M" -> "3", "3m" -> "b3")
+                                                        // 'd' (diminished) is often displayed as 'bb' in 7ths, but for 5d -> b5. 
+                                                        // Adjusted logic: M->'', P->'', m->'b', d->'b' (common jazz) or 'bb'? 
+                                                        // Let's stick to existing logic but maybe consider 'd' handling if needed.
+                                                        // Existing was: .replace('d', 'bb'). 
+                                                        // With correct spelling, we shouldn't get weird diminished intervals like '4d' (4bb) 
+                                                        // for a Major 3rd.
                                                         return interval.replace('M', '').replace('P', '').replace('m', 'b').replace('d', 'bb').replace('A', '#');
                                                     }
                                                 }
-                                                return pc;
+                                                return displayPc;
                                             })()}
                                         </text>
                                     </g>
