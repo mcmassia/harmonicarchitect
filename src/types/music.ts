@@ -46,6 +46,8 @@ export interface StringGroupAnalysis {
     intervals: string[];
     chordName: string;
     emotionalTag: string;
+    inversion?: string;
+    root?: string;
 }
 
 export interface EmotionProfile {

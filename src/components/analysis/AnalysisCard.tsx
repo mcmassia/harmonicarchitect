@@ -64,16 +64,23 @@ function AnalysisCardItem({ group, isMidwest, isSelected, onSelect }: {
         });
     };
 
-    const { savedChords, saveChord, deleteChord } = useSavedChordsStore();
-    const savedChord = savedChords.find(c => c.name === group.chordName);
-    const isSaved = !!savedChord;
+    const { savedChords, saveChord, deleteChord, isChordSaved } = useSavedChordsStore();
+
+    // Check if this specific SHAPE is saved
+    const isSaved = isChordSaved(group.chordName, group.notes);
+    const savedChord = savedChords.find(c =>
+        c.name === group.chordName &&
+        c.notes &&
+        c.notes.length === group.notes.length &&
+        c.notes.every((n, i) => n === group.notes[i])
+    );
 
     const handleSave = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isSaved) {
-            deleteChord(savedChord!.id);
+        if (isSaved && savedChord) {
+            deleteChord(savedChord.id);
         } else {
-            saveChord(group.chordName);
+            saveChord(group);
         }
     };
 
@@ -113,17 +120,24 @@ function AnalysisCardItem({ group, isMidwest, isSelected, onSelect }: {
                             ? "bg-amber-500/20 text-amber-400"
                             : "text-slate-500 hover:text-white hover:bg-slate-800"
                     )}
-                    title={isSaved ? "Eliminar de guardados" : "Guardar acorde"}
+                    title={isSaved ? "Eliminar de guardados" : "Guardar fingering/shape"}
                 >
                     <Bookmark className={clsx("w-5 h-5", isSaved && "fill-current")} />
                 </button>
             </div>
 
-            <div className="mb-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-white">{group.chordName}</span>
-                <span className="text-xs text-slate-400 font-mono uppercase tracking-wider">
-                    Strings {group.stringIndices.map(s => s + 1).join("-")}
-                </span>
+            <div className="mb-2">
+                <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-white">{group.chordName}</span>
+                    <span className="text-xs text-slate-400 font-mono uppercase tracking-wider">
+                        Strings {group.stringIndices.map(s => s + 1).join("-")}
+                    </span>
+                </div>
+                {group.inversion && group.inversion !== "Fundamental" && (
+                    <div className="text-xs font-medium text-amber-400/80 mt-1">
+                        {group.inversion}
+                    </div>
+                )}
             </div>
 
             <div className={clsx("text-lg font-medium",

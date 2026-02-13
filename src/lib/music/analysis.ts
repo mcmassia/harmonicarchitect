@@ -78,12 +78,16 @@ function analyzeGroup(groupNotes: string[], indices: number[], results: StringGr
         chordName = detected.length > 0 ? detected[0] : rootPc;
     }
 
+    const inversion = detectInversion(groupNotes, rootPc);
+
     results.push({
         stringIndices: indices,
         notes: groupNotes,
         intervals: intervals,
         chordName: chordName,
-        emotionalTag: getEmotionalTag(chordName, intervals)
+        emotionalTag: getEmotionalTag(chordName, intervals),
+        inversion: inversion,
+        root: rootPc
     });
 }
 
@@ -251,7 +255,9 @@ export function reanalyzeGroup(original: StringGroupAnalysis, newRoot: string): 
         ...original,
         intervals: intervals,
         chordName: bestName,
-        emotionalTag: getEmotionalTag(bestName, intervals)
+        emotionalTag: getEmotionalTag(bestName, intervals),
+        inversion: detectInversion(original.notes, rootPc),
+        root: rootPc
     };
 }
 
@@ -297,15 +303,72 @@ export function analyzeMarkedNotes(pitchClasses: string[]): StringGroupAnalysis[
             }
         }
 
+        // Detect inversion
+        // For analyzeMarkedNotes, the "bass" note is simply the lowest pitch in the sorted array of pitchClasses? 
+        // Actually, pitchClasses here are just strings like "C", "E", "G" with NO octave info if input is just PCs.
+        // BUT analyzeMarkedNotes signature says `pitchClasses: string[]`. 
+        // If these are just PC (e.g. "C", "E"), we CANNOT detect inversion reliably without octave.
+        // However, usually `analyzeBarChords` passes full notes with octaves (e.g. "C3").
+        // Let's assume input might have octaves. 
+        // If no octaves, we can't really do inversion.
+        // But `analyzeGroup` receives `groupNotes` which ARE specific notes with octaves from tuning.
+
+        // Wait, `analyzeMarkedNotes` is used for "interactive mode" where user clicks fretboard.
+        // The input to `analyzeMarkedNotes` in `Fretboard.tsx` (not shown but assumed) likely comes from `activeNotes`.
+
+        // Let's look at `analyzeGroup` first, which definitely has octaves.
+
         results.push({
             stringIndices: Array.from({ length: pitchClasses.length }, (_, i) => i),
             notes: pitchClasses,
             intervals: intervals,
             chordName: chordName,
-            emotionalTag: getEmotionalTag(chordName, intervals)
+            emotionalTag: getEmotionalTag(chordName, intervals),
+            inversion: "" // Cannot determine without octaves if input is just PC.
         });
     });
 
     return results;
 }
+
+// ============================================================================
+// Inversion Detection
+// ============================================================================
+
+export function detectInversion(notes: string[], root: string): string {
+    if (!notes.length || !root) return "";
+
+    // 1. Find the bass note (lowest pitch)
+    // Sort by MIDI value
+    const sorted = [...notes].sort((a, b) => {
+        const midiA = Note.midi(a) || 0;
+        const midiB = Note.midi(b) || 0;
+        return midiA - midiB;
+    });
+
+    const bassNote = sorted[0];
+    const bassPc = Note.pitchClass(bassNote);
+    const rootPc = Note.pitchClass(root);
+
+    if (bassPc === rootPc) {
+        return "Fundamental";
+    }
+
+    // Calculate interval from Root to Bass
+    const dist = Interval.distance(rootPc, bassPc);
+    const simpleDist = Interval.simplify(dist); // e.g. "3M", "5P"
+
+    // Map interval to inversion name
+    // 3rd (Major or Minor) -> 1st Inversion
+    if (simpleDist === "3M" || simpleDist === "3m") return "1st Inversion";
+
+    // 5th (Perfect or Diminished) -> 2nd Inversion
+    if (simpleDist === "5P" || simpleDist === "5d") return "2nd Inversion";
+
+    // 7th (Major or Minor) -> 3rd Inversion
+    if (simpleDist === "7M" || simpleDist === "7m") return "3rd Inversion";
+
+    return `Inversion (${simpleDist})`;
+}
+
 

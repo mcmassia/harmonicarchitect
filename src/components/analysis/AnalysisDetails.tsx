@@ -22,7 +22,14 @@ export function AnalysisDetails({ analysis }: AnalysisDetailsProps) {
                 <div className="space-y-2">
                     <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Identity</h4>
                     <p className="text-2xl font-black text-white">{analysis.chordName}</p>
-                    <p className="text-emerald-400 font-medium">{analysis.emotionalTag}</p>
+                    <div className="flex items-center gap-3">
+                        <span className="text-emerald-400 font-medium">{analysis.emotionalTag}</span>
+                        {analysis.inversion && analysis.inversion !== "Fundamental" && (
+                            <span className="text-amber-400 text-sm font-bold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                                {analysis.inversion}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 {/* Intervals */}
