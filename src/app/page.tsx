@@ -239,7 +239,7 @@ export default function Home() {
                     selectedAnalysis={selectedAnalysis}
                   />
                 )}
-                )}
+
               </section>
 
               {/* Saved Chords List */}
