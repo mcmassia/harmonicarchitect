@@ -4,6 +4,7 @@ import { TuningEditor } from '@/components/tuning/TuningEditor';
 import { Fretboard } from '@/components/fretboard/Fretboard';
 import { AnalysisCard } from '@/components/analysis/AnalysisCard';
 import { AnalysisDetails } from '@/components/analysis/AnalysisDetails';
+import { SavedChordsList } from '@/components/analysis/SavedChordsList';
 import { MarkedNoteAnalysis } from '@/components/analysis/MarkedNoteAnalysis';
 import { ChordScaleSelector } from '@/components/selectors/ChordScaleSelector';
 import { Header } from '@/components/layout/Header';
@@ -238,6 +239,19 @@ export default function Home() {
                     selectedAnalysis={selectedAnalysis}
                   />
                 )}
+                )}
+              </section>
+
+              {/* Saved Chords List */}
+              <section className="md:col-span-1 lg:col-span-1 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                    <span className="px-3 py-1 rounded text-sm uppercase tracking-widest font-mono bg-slate-800 text-slate-300">
+                      Mis Guardados
+                    </span>
+                  </h2>
+                </div>
+                <SavedChordsList onLoad={setSelectedAnalysis} />
               </section>
 
               {/* Details Panel */}

@@ -64,15 +64,16 @@ export const useSavedChordsStore = create<SavedChordsState>()(
                     // It's a StringGroupAnalysis object
                     const analysis = chordData as any; // Cast locally
 
-                    // Check duplicate purely by NOTES (Fingering/Shape)
-                    // If notes are identical, it's the same shape.
-                    const isShapeDuplicate = savedChords.some(c =>
+                    // Check duplicate by NAME AND NOTES (Strict Shape Identity)
+                    // Allows saving "C" and "Em#5" as separate entries even if notes are identical.
+                    const isDuplicate = savedChords.some(c =>
+                        c.name === analysis.chordName &&
                         c.notes &&
                         c.notes.length === analysis.notes.length &&
                         c.notes.every((n: string, i: number) => n === analysis.notes[i])
                     );
 
-                    if (isShapeDuplicate) return;
+                    if (isDuplicate) return;
 
                     newChord = {
                         id: `chord_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -98,8 +99,9 @@ export const useSavedChordsStore = create<SavedChordsState>()(
                 const { savedChords } = get();
 
                 if (shapeNotes && shapeNotes.length > 0) {
-                    // strict shape check
+                    // Strict check: Name AND Notes must match
                     return savedChords.some(c =>
+                        c.name === chordName &&
                         c.notes &&
                         c.notes.length === shapeNotes.length &&
                         c.notes.every((n, i) => n === shapeNotes[i])
