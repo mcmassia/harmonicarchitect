@@ -254,6 +254,4 @@ function InteractiveAnalysisCard({
         </div>
     );
 }
-        </div >
-    );
-}
+
