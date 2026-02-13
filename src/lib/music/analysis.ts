@@ -154,8 +154,8 @@ function detectChordTypeFromIntervals(intervalList: string[]): string | null {
         return "7";
     }
 
-    // Major (1, 3, 5)
-    if (has1 && has3M && !has3m) {
+    // Major (1, 3, 5) - REQUIRE 5P to avoid ambiguity with inversions of other chords
+    if (has1 && has3M && has5P && !has3m && !has7m && !has7M) {
         return "";
     }
 
@@ -181,8 +181,8 @@ function detectChordTypeFromIntervals(intervalList: string[]): string | null {
         return "m(add9)";
     }
 
-    // Minor (1, b3, 5)
-    if (has1 && has3m && !has3M) {
+    // Minor (1, b3, 5) - REQUIRE 5P
+    if (has1 && has3m && has5P && !has3M && !has7m && !has7M) {
         return "m";
     }
 
@@ -271,9 +271,13 @@ export function analyzeMarkedNotes(pitchClasses: string[]): StringGroupAnalysis[
     const results: StringGroupAnalysis[] = [];
 
     // For each pitch class as a potential root
-    pitchClasses.forEach((rootPc, rootIndex) => {
-        // Calculate intervals from this root to all other notes
-        const intervals = pitchClasses.map(pc => {
+    pitchClasses.forEach((rootNote) => {
+        // Ensure root is just a pitch class (e.g. "C") for analysis purposes
+        const rootPc = Note.pitchClass(rootNote);
+
+        // Calculate intervals from this root to all other notes (ASCENDING PC intervals)
+        const intervals = pitchClasses.map(note => {
+            const pc = Note.pitchClass(note);
             const dist = Interval.distance(rootPc, pc);
             return Interval.simplify(dist);
         });
@@ -286,7 +290,11 @@ export function analyzeMarkedNotes(pitchClasses: string[]): StringGroupAnalysis[
             chordName = rootPc + chordType;
         } else {
             // Fallback: try Tonal detection
-            const detected = Chord.detect(pitchClasses);
+            // Note: Tonal expects full notes or PCs. Using PCs here.
+            const pcsOnly = pitchClasses.map(n => Note.pitchClass(n));
+            const detected = Chord.detect(pcsOnly);
+
+            // Prefer matches where tonic is our current root
             const match = detected.find(name => {
                 const chord = Chord.get(name);
                 return chord.tonic === rootPc;
@@ -295,9 +303,15 @@ export function analyzeMarkedNotes(pitchClasses: string[]): StringGroupAnalysis[
             if (match) {
                 chordName = match;
             } else if (detected.length > 0) {
-                // Create slash chord notation
-                const cleanName = detected[0].split('/')[0];
-                chordName = `${cleanName}/${rootPc}`;
+                // If it detected something else, maybe it's a slash chord relative to our root?
+                // But generally Chord.detect returns Names. 
+                // If we are forcing `rootPc` as root, and Tonal says it's something else, 
+                // maybe this isn't a valid root for this set.
+                // We'll just take the first detection or append "?"
+                // But let's avoid showing garbage like "Em#5/G3".
+
+                // If the root doesn't match, maybe just don't name it relative to this root unless slash
+                chordName = rootPc + "?";
             } else {
                 chordName = rootPc + "?";
             }
