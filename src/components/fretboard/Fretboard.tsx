@@ -227,8 +227,18 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                 const isChordRoot = (displayPc === chordRootPc || Note.enharmonic(displayPc) === chordRootPc) && isInChord;
                                 const isInBoth = isInChord && isInScale;
 
+                                // Specific Voicing Highlighting (Strict Mode)
+                                // If analysis is present, we likely have specific notes (e.g. C3, E3, G3)
+                                // We should match exact notes if possible to show the specific shape/fingering.
+                                const currentNoteNameWithOctave = noteName; // e.g. "C3"
+                                const isActiveSpecificNote = activeNotes.includes(currentNoteNameWithOctave);
+
                                 // Analysis Highlighting (from prop)
-                                const isHighlighted = activePitchClasses.has(pc) || activePitchClasses.has(enharmonicPc);
+                                // If we have specific notes in analysis, use strict matching.
+                                // Otherwise fall back to pitch class matching.
+                                const isHighlighted = analysis
+                                    ? isActiveSpecificNote
+                                    : (activePitchClasses.has(pc) || activePitchClasses.has(enharmonicPc));
 
                                 // Marked State (depends on mode)
                                 const isMarkedByNote = markedPitchClasses.has(pc) || markedPitchClasses.has(enharmonicPc);
