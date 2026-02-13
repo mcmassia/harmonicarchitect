@@ -91,14 +91,21 @@ export const useMarkedNotesStore = create<MarkedNotesState>((set, get) => ({
             newPositions = [...markedPositions, { stringIndex, fretIndex, note }];
         }
 
-        // Extract unique pitch classes for analysis
-        const uniquePitchClasses = Array.from(new Set(
-            newPositions.map(p => Note.pitchClass(p.note))
-        )).sort();
+        // Extract unique notes for analysis
+        // If we want inversions, we need specific pitches (e.g. C3, E3), not just classes.
+        // Sort by MIDI to ensure bass note is first for inversion detection if we treated array as ordered?
+        // Actually analyzeMarkedNotes handles sorting. But we must pass "C3", not "C".
+        const uniqueNotes = Array.from(new Set(
+            newPositions.map(p => p.note) // Pass full note including octave
+        )).sort((a, b) => {
+            const midiA = Note.midi(a) || 0;
+            const midiB = Note.midi(b) || 0;
+            return midiA - midiB;
+        });
 
         // Re-analyze
-        const analysis = uniquePitchClasses.length >= 2
-            ? analyzeMarkedNotes(uniquePitchClasses)
+        const analysis = uniqueNotes.length >= 2
+            ? analyzeMarkedNotes(uniqueNotes)
             : [];
 
         set({ markedPositions: newPositions, analysis });

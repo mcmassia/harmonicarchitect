@@ -304,19 +304,14 @@ export function analyzeMarkedNotes(pitchClasses: string[]): StringGroupAnalysis[
         }
 
         // Detect inversion
-        // For analyzeMarkedNotes, the "bass" note is simply the lowest pitch in the sorted array of pitchClasses? 
-        // Actually, pitchClasses here are just strings like "C", "E", "G" with NO octave info if input is just PCs.
-        // BUT analyzeMarkedNotes signature says `pitchClasses: string[]`. 
-        // If these are just PC (e.g. "C", "E"), we CANNOT detect inversion reliably without octave.
-        // However, usually `analyzeBarChords` passes full notes with octaves (e.g. "C3").
-        // Let's assume input might have octaves. 
-        // If no octaves, we can't really do inversion.
-        // But `analyzeGroup` receives `groupNotes` which ARE specific notes with octaves from tuning.
+        let inversion = "";
 
-        // Wait, `analyzeMarkedNotes` is used for "interactive mode" where user clicks fretboard.
-        // The input to `analyzeMarkedNotes` in `Fretboard.tsx` (not shown but assumed) likely comes from `activeNotes`.
+        // Check if input has octave info (e.g., "C3" vs "C")
+        const hasOctave = pitchClasses.every(n => /\d/.test(n));
 
-        // Let's look at `analyzeGroup` first, which definitely has octaves.
+        if (hasOctave) {
+            inversion = detectInversion(pitchClasses, rootPc);
+        }
 
         results.push({
             stringIndices: Array.from({ length: pitchClasses.length }, (_, i) => i),
@@ -324,7 +319,8 @@ export function analyzeMarkedNotes(pitchClasses: string[]): StringGroupAnalysis[
             intervals: intervals,
             chordName: chordName,
             emotionalTag: getEmotionalTag(chordName, intervals),
-            inversion: "" // Cannot determine without octaves if input is just PC.
+            inversion: inversion,
+            root: rootPc
         });
     });
 
