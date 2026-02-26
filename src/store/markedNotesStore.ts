@@ -1,13 +1,7 @@
 import { create } from 'zustand';
-import { StringGroupAnalysis } from '@/types/music';
+import { StringGroupAnalysis, MarkedPosition } from '@/types/music';
 import { analyzeMarkedNotes } from '@/lib/music/analysis';
 import { Note } from "@tonaljs/tonal";
-
-interface MarkedPosition {
-    stringIndex: number;
-    fretIndex: number;
-    note: string;
-}
 
 interface MarkedNotesState {
     // Mode for identifying notes:
@@ -27,10 +21,27 @@ interface MarkedNotesState {
     // Interactive mode toggle
     isInteractiveMode: boolean;
 
+    // Selected tonic for diagrams or visual reference
+    tonic: string | null;
+
+    // Custom colors for notes or positions
+    noteColors: Record<string, string>;
+
+    // Active diagram ID if we are editing an existing diagram
+    activeDiagramId: string | null;
+
+    // View Options
+    showIntervals: boolean;
+
     // Actions
     setSelectionMode: (mode: 'note' | 'position') => void;
+    setShowIntervals: (show: boolean) => void;
     toggleNote: (pitchClass: string) => void;
     togglePosition: (stringIndex: number, fretIndex: number, note: string) => void;
+    setTonic: (note: string | null) => void;
+    setNoteColor: (noteOrPositionId: string, color: string) => void;
+    setNoteColors: (colors: Record<string, string>) => void;
+    setActiveDiagramId: (id: string | null) => void;
     clearNotes: () => void;
     setInteractiveMode: (enabled: boolean) => void;
 }
@@ -40,13 +51,29 @@ export const useMarkedNotesStore = create<MarkedNotesState>((set, get) => ({
     markedNotes: [],
     markedPositions: [],
     analysis: [],
+    tonic: null,
+    noteColors: {},
+    activeDiagramId: null,
     isInteractiveMode: false,
+    showIntervals: false,
 
     setSelectionMode: (mode) => {
-        set({ selectionMode: mode });
-        // Optional: clear notes when switching modes?
-        // Let's clear to avoid confusion
-        get().clearNotes();
+        set((state) => {
+            // Keep the previous mode state internally, but toggle off if explicitly requested
+            return {
+                selectionMode: mode,
+                markedNotes: [],
+                markedPositions: [],
+                analysis: [],
+                tonic: null,
+                noteColors: {},
+                activeDiagramId: null
+            };
+        });
+    },
+
+    setShowIntervals: (show) => {
+        set({ showIntervals: show });
     },
 
     toggleNote: (pitchClass: string) => {
@@ -111,15 +138,33 @@ export const useMarkedNotesStore = create<MarkedNotesState>((set, get) => ({
         set({ markedPositions: newPositions, analysis });
     },
 
+    setTonic: (note: string | null) => {
+        set({ tonic: note });
+    },
+
+    setNoteColor: (noteOrPositionId: string, color: string) => {
+        set((state) => ({
+            noteColors: { ...state.noteColors, [noteOrPositionId]: color }
+        }));
+    },
+
+    setNoteColors: (colors: Record<string, string>) => {
+        set({ noteColors: colors });
+    },
+
+    setActiveDiagramId: (id: string | null) => {
+        set({ activeDiagramId: id });
+    },
+
     clearNotes: () => {
-        set({ markedNotes: [], markedPositions: [], analysis: [] });
+        set({ markedNotes: [], markedPositions: [], analysis: [], tonic: null, noteColors: {}, activeDiagramId: null });
     },
 
     setInteractiveMode: (enabled: boolean) => {
         set({ isInteractiveMode: enabled });
         // Clear marked notes when exiting interactive mode
         if (!enabled) {
-            set({ markedNotes: [], markedPositions: [], analysis: [] });
+            set({ markedNotes: [], markedPositions: [], analysis: [], tonic: null, noteColors: {}, activeDiagramId: null });
         }
     }
 }));

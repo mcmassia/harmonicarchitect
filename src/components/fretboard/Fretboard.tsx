@@ -27,7 +27,11 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
         isInteractiveMode,
         toggleNote,
         togglePosition,
-        analysis: storeAnalysis
+        analysis: storeAnalysis,
+        tonic,
+        noteColors,
+        showIntervals,
+        setShowIntervals
     } = useMarkedNotesStore();
     const { chordNotes, scaleNotes, isChordScaleMode, selectedRoot } = useChordScaleStore();
 
@@ -291,8 +295,11 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                     }
                                 } else if (isInteractiveMode && isMarked) {
                                     // Marked note in interactive mode
-                                    fillColor = "#6366f1"; // Indigo-500
-                                    strokeColor = "#4338ca"; // Indigo-700
+                                    const isTonicSelected = tonic && (displayPc === tonic || Note.enharmonic(displayPc) === tonic);
+                                    const customColor = noteColors[displayPc] || noteColors[pc] || noteColors[enharmonicPc];
+
+                                    fillColor = customColor || (isTonicSelected ? "#ef4444" : "#6366f1"); // Custom or Red : Indigo
+                                    strokeColor = isTonicSelected ? "#b91c1c" : (customColor ? "#ffffff" : "#4338ca"); // Red-700 : White/Indigo-700
                                     noteOpacity = 1;
                                 } else if (!isInteractiveMode && !isChordScaleMode && isHighlighted) {
                                     // Analysis mode: show highlighted notes
@@ -386,11 +393,14 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                                     } else if (analysis) {
                                                         const idx = analysis.intervals.indexOf("1P");
                                                         if (idx >= 0) root = Note.pitchClass(analysis.notes[idx]);
-                                                    } else if (isInteractiveMode && storeAnalysis.length > 0) {
-                                                        // Fallback for interactive mode: Use the first candidate analysis root
-                                                        const candidate = storeAnalysis[0];
-                                                        const idx = candidate.intervals.indexOf("1P");
-                                                        if (idx >= 0) root = Note.pitchClass(candidate.notes[idx]);
+                                                    } else if (isInteractiveMode) {
+                                                        if (tonic) {
+                                                            root = tonic;
+                                                        } else if (storeAnalysis.length > 0) {
+                                                            const candidate = storeAnalysis[0];
+                                                            const idx = candidate.intervals.indexOf("1P");
+                                                            if (idx >= 0) root = Note.pitchClass(candidate.notes[idx]);
+                                                        }
                                                     }
 
                                                     if (root) {

@@ -55,3 +55,23 @@ export interface EmotionProfile {
     description: string;
     color: string; // Tailwind class or hex
 }
+
+export interface MarkedPosition {
+    stringIndex: number;
+    fretIndex: number;
+    note: string;
+}
+
+export interface NoteDiagram {
+    id: string;
+    tuningId: string;
+    name: string;
+    description: string;
+    selectionMode: 'note' | 'position';
+    markedNotes: string[];
+    markedPositions: MarkedPosition[];
+    tonic: string | null;
+    colors?: Record<string, string>;
+    createdAt: number;
+    // Optional fields for custom styling or color arrays if we want later
+}

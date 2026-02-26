@@ -1,11 +1,24 @@
 "use client";
 
 import { useMarkedNotesStore } from '@/store/markedNotesStore';
-import { Music2, Sparkles, Trash2, MousePointer2 } from 'lucide-react';
+import { Music2, Sparkles, Trash2, MousePointer2, Save } from 'lucide-react';
 import { clsx } from "clsx";
 import { StringGroupAnalysis } from '@/types/music';
-import { useMemo } from 'react';
-import { Note } from "@tonaljs/tonal";
+import { useMemo, useState, useEffect } from 'react';
+import { Note, Interval } from "@tonaljs/tonal";
+import { useDiagramStore } from '@/store/diagramStore';
+import { useTuningStore } from '@/store/tuningStore';
+
+const COLOR_PALETTE = [
+    { name: "Por Defecto", value: "" },
+    { name: "Índigo", value: "#6366f1" },
+    { name: "Cyan", value: "#06b6d4" },
+    { name: "Esmeralda", value: "#10b981" },
+    { name: "Ámbar", value: "#f59e0b" },
+    { name: "Rojo", value: "#ef4444" },
+    { name: "Fucsia", value: "#d946ef" },
+    { name: "Gris", value: "#64748b" }
+];
 
 interface MarkedNoteAnalysisProps {
     onSelect?: (analysis: StringGroupAnalysis) => void;
@@ -13,7 +26,29 @@ interface MarkedNoteAnalysisProps {
 }
 
 export function MarkedNoteAnalysis({ onSelect, selectedAnalysis }: MarkedNoteAnalysisProps) {
-    const { markedNotes, markedPositions, selectionMode, analysis, clearNotes } = useMarkedNotesStore();
+    const {
+        markedNotes, markedPositions, selectionMode, analysis, clearNotes,
+        tonic, setTonic, activeDiagramId, noteColors, setNoteColor, setActiveDiagramId
+    } = useMarkedNotesStore();
+    const { saveDiagram, updateDiagram, diagrams } = useDiagramStore();
+    const { strings, noteDisplayMode } = useTuningStore();
+
+    const [diagramName, setDiagramName] = useState("");
+    const [diagramDescription, setDiagramDescription] = useState("");
+
+    // Populate the form if editing an existing diagram
+    useEffect(() => {
+        if (activeDiagramId) {
+            const d = diagrams.find(d => d.id === activeDiagramId);
+            if (d) {
+                setDiagramName(d.name);
+                setDiagramDescription(d.description || "");
+            }
+        } else {
+            setDiagramName("");
+            setDiagramDescription("");
+        }
+    }, [activeDiagramId, diagrams]);
 
     // Determine active pitch classes based on mode
     const activeNotes = useMemo(() => {
@@ -24,6 +59,56 @@ export function MarkedNoteAnalysis({ onSelect, selectedAnalysis }: MarkedNoteAna
             return Array.from(unique).sort();
         }
     }, [selectionMode, markedNotes, markedPositions]);
+
+    // Helper to get display name for a note (Note name or Interval if tonic is set and display mode is intervals)
+    const getNoteDisplayName = (note: string) => {
+        if (noteDisplayMode === 'intervals' && tonic) {
+            // Calculate interval relative to tonic
+            try {
+                const interval = Interval.distance(tonic, note);
+                if (interval) {
+                    // M3 -> 3, m3 -> b3, P5 -> 5, etc.
+                    return interval.replace('M', '').replace('P', '').replace('m', 'b').replace('d', 'bb').replace('A', '#');
+                }
+            } catch (e) {
+                return note;
+            }
+        }
+        return note;
+    };
+
+    const handleSaveDiagram = () => {
+        if (!diagramName.trim()) return;
+
+        const tuningId = strings.map(s => s.note.scientific).join('-');
+
+        if (activeDiagramId) {
+            updateDiagram(activeDiagramId, {
+                name: diagramName,
+                description: diagramDescription,
+                selectionMode,
+                markedNotes,
+                markedPositions,
+                tonic,
+                colors: noteColors,
+            });
+        } else {
+            const newId = crypto.randomUUID();
+            saveDiagram({
+                id: newId,
+                tuningId,
+                name: diagramName,
+                description: diagramDescription,
+                selectionMode,
+                markedNotes,
+                markedPositions,
+                tonic,
+                colors: noteColors,
+                createdAt: Date.now()
+            });
+            setActiveDiagramId(newId);
+        }
+    };
 
     const displayCount = selectionMode === 'note' ? markedNotes.length : markedPositions.length;
     const uniqueCount = activeNotes.length;
@@ -103,6 +188,103 @@ export function MarkedNoteAnalysis({ onSelect, selectedAnalysis }: MarkedNoteAna
                     Limpiar
                 </button>
             </div>
+
+            {/* Diagram Save & Tonic Selection */}
+            {uniqueCount >= 1 && (
+                <div className="p-4 bg-indigo-950/20 rounded-xl border border-indigo-500/30 space-y-4">
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-indigo-300 mb-1">Seleccionar Tónica:</label>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setTonic(null)}
+                                className={clsx(
+                                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+                                    tonic === null
+                                        ? "bg-slate-700 text-white border-slate-500"
+                                        : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800"
+                                )}
+                            >
+                                Ninguna
+                            </button>
+                            {activeNotes.map((note) => (
+                                <button
+                                    key={note}
+                                    onClick={() => setTonic(note)}
+                                    className={clsx(
+                                        "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors",
+                                        tonic === note
+                                            ? "bg-amber-600 text-white border-amber-500"
+                                            : "bg-indigo-900/40 text-indigo-300 border-indigo-500/30 hover:bg-indigo-800/50"
+                                    )}
+                                >
+                                    {note}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 border-t border-indigo-500/20 pt-4">
+                        <label className="text-sm font-medium text-indigo-300 mb-1">Colores Personalizados:</label>
+                        <div className="space-y-3">
+                            {activeNotes.map((note) => (
+                                <div key={note} className="flex items-center gap-3">
+                                    <div className="w-12 text-sm font-bold text-slate-300 truncate" title={note}>
+                                        {getNoteDisplayName(note)}
+                                    </div>
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {COLOR_PALETTE.map(color => {
+                                            const isSelected = (noteColors[note] || "") === color.value;
+                                            return (
+                                                <button
+                                                    key={color.name}
+                                                    title={color.name}
+                                                    onClick={() => setNoteColor(note, color.value)}
+                                                    className={clsx(
+                                                        "w-6 h-6 rounded-full border-2 transition-transform hover:scale-110",
+                                                        isSelected ? "border-white scale-110" : "border-slate-700/50",
+                                                        color.value === "" && "bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-500"
+                                                    )}
+                                                    style={color.value ? { backgroundColor: color.value } : {}}
+                                                >
+                                                    {color.value === "" && "X"}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-3 pt-4 border-t border-indigo-500/20">
+                        <input
+                            type="text"
+                            placeholder="Nombre del diagrama..."
+                            value={diagramName}
+                            onChange={(e) => setDiagramName(e.target.value)}
+                            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        />
+                        <textarea
+                            placeholder="Descripción (opcional)..."
+                            value={diagramDescription}
+                            onChange={(e) => setDiagramDescription(e.target.value)}
+                            rows={3}
+                            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-y"
+                        />
+                        <button
+                            onClick={handleSaveDiagram}
+                            disabled={!diagramName.trim()}
+                            className={clsx(
+                                "w-full flex items-center justify-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-medium text-sm transition-colors",
+                                activeDiagramId ? "bg-amber-600 hover:bg-amber-500" : "bg-indigo-600 hover:bg-indigo-500"
+                            )}
+                        >
+                            <Save className="w-4 h-4" />
+                            {activeDiagramId ? "Actualizar Diagrama" : "Guardar Diagrama"}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Analysis Cards - One per possible root */}
             {analysis.map((group, i) => (
