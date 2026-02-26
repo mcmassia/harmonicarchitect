@@ -30,7 +30,8 @@ export function TuningManager() {
         if (!user) return;
         setLoading(true);
         const data = await DB.getUserTunings(user.uid);
-        setSavedTunings(data);
+        const sortedData = data.sort((a, b) => a.name.localeCompare(b.name));
+        setSavedTunings(sortedData);
         setLoading(false);
     };
 
