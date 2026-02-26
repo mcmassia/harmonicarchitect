@@ -2,13 +2,13 @@ import { useDiagramStore } from '@/store/diagramStore';
 import { useTuningStore } from '@/store/tuningStore';
 import { useMarkedNotesStore } from '@/store/markedNotesStore';
 import { NoteDiagram } from '@/types/music';
-import { Trash2, Eye, Map, Search } from 'lucide-react';
+import { Trash2, Eye, Map, Search, Copy } from 'lucide-react';
 import { useState } from 'react';
 
 export function SavedDiagramsList() {
     const { strings } = useTuningStore();
     const tuningId = strings.map(s => s.note.scientific).join('-');
-    const { getDiagramsByTuning, deleteDiagram } = useDiagramStore();
+    const { getDiagramsByTuning, deleteDiagram, saveDiagram } = useDiagramStore();
     const diagrams = getDiagramsByTuning(tuningId);
 
     const [searchQuery, setSearchQuery] = useState("");
@@ -49,6 +49,16 @@ export function SavedDiagramsList() {
             setActiveDiagramId(diagram.id);
             setNoteColors(diagram.colors || {});
         }, 0);
+    };
+
+    const handleClone = (diagram: NoteDiagram) => {
+        const newId = crypto.randomUUID();
+        saveDiagram({
+            ...diagram,
+            id: newId,
+            name: `${diagram.name} (Copia)`,
+            createdAt: Date.now()
+        });
     };
 
     if (diagrams.length === 0) {
@@ -110,6 +120,13 @@ export function SavedDiagramsList() {
                                         title="Visualizar"
                                     >
                                         <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleClone(diagram)}
+                                        className="p-2 text-slate-400 hover:text-amber-400 bg-slate-800 hover:bg-amber-500/10 rounded-lg transition-colors border border-transparent hover:border-amber-500/30"
+                                        title="Clonar Diagrama"
+                                    >
+                                        <Copy className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={() => deleteDiagram(diagram.id)}

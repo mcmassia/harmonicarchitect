@@ -193,7 +193,12 @@ export default function Home() {
             )}
 
             {/* Analysis Grid & Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={clsx(
+              "grid gap-6",
+              currentMode === 'interactive'
+                ? "grid-cols-1 lg:grid-cols-3"
+                : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+            )}>
 
               {/* Analysis List */}
               <section className="md:col-span-1 lg:col-span-1 space-y-4">
@@ -244,7 +249,12 @@ export default function Home() {
               </section>
 
               {/* Saved Items List */}
-              <section className="md:col-span-1 lg:col-span-1 space-y-4">
+              <section className={clsx(
+                "space-y-4",
+                currentMode === 'interactive'
+                  ? "lg:col-span-2" // Take up remaining 2 columns in interactive mode
+                  : "md:col-span-1 lg:col-span-1"
+              )}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-white flex items-center gap-3">
                     <span className="px-3 py-1 rounded text-sm uppercase tracking-widest font-mono bg-slate-800 text-slate-300">
@@ -259,31 +269,29 @@ export default function Home() {
                 )}
               </section>
 
-              {/* Details Panel */}
-              <section className="md:col-span-1 lg:col-span-2">
-                {selectedAnalysis ? (
-                  <AnalysisDetails analysis={selectedAnalysis} />
-                ) : (
-                  /* Placeholder */
-                  <div className={clsx(
-                    "h-full min-h-[300px] rounded-xl border border-dashed flex flex-col items-center justify-center gap-4",
-                    currentMode === 'interactive'
-                      ? "border-indigo-800 text-indigo-600 bg-indigo-950/10"
-                      : currentMode === 'chordscale'
+              {/* Details Panel - Hidden in interactive mode since the diagrams list takes the space */}
+              {currentMode !== 'interactive' && (
+                <section className="md:col-span-1 lg:col-span-2">
+                  {selectedAnalysis ? (
+                    <AnalysisDetails analysis={selectedAnalysis} />
+                  ) : (
+                    /* Placeholder */
+                    <div className={clsx(
+                      "h-full min-h-[300px] rounded-xl border border-dashed flex flex-col items-center justify-center gap-4",
+                      currentMode === 'chordscale'
                         ? "border-amber-800 text-amber-600 bg-amber-950/10"
                         : "border-slate-800 text-slate-600 bg-slate-900/20"
-                  )}>
-                    <Share2 className="w-12 h-12 opacity-20" />
-                    <p className="text-sm font-medium">
-                      {currentMode === 'interactive'
-                        ? "Marca notas y selecciona un acorde"
-                        : currentMode === 'chordscale'
+                    )}>
+                      <Share2 className="w-12 h-12 opacity-20" />
+                      <p className="text-sm font-medium">
+                        {currentMode === 'chordscale'
                           ? "Selecciona un acorde y/o escala"
                           : "Select a chord to view details"}
-                    </p>
-                  </div>
-                )}
-              </section>
+                      </p>
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
 
           </div>
