@@ -41,7 +41,7 @@ const createStringConfig = (noteStr: string, index: number, gauge: number, scale
     return {
         index,
         note: {
-            name: note.letter,
+            name: note.pc,
             octave: note.oct || 0,
             scientific: note.name,
             midi: note.midi || 0,
