@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useTuningStore } from '@/store/tuningStore';
 import { DB } from '@/lib/firebase/db';
 import { Tuning } from '@/types/music';
-import { Save, FolderOpen, Loader2, Trash2 } from 'lucide-react';
+import { Save, FolderOpen, Loader2, Trash2, Edit2, X, Check } from 'lucide-react';
 import { clsx } from "clsx";
 
 export function TuningManager() {
@@ -16,6 +16,10 @@ export function TuningManager() {
     const [savedTunings, setSavedTunings] = useState<Tuning[]>([]);
     const [loading, setLoading] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editDescription, setEditDescription] = useState("");
 
     useEffect(() => {
         if (user) {
@@ -63,6 +67,37 @@ export function TuningManager() {
         await loadTunings();
     }
 
+    const handleEditStart = (t: Tuning, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingId(t.id!);
+        setEditName(t.name);
+        setEditDescription(t.description || "");
+    };
+
+    const handleEditCancel = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingId(null);
+    };
+
+    const handleEditSave = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!editName.trim()) return alert("Name is required");
+
+        setLoading(true);
+        try {
+            await DB.updateTuning(id, {
+                name: editName.trim(),
+                description: editDescription.trim() || undefined
+            });
+            await loadTunings();
+            setEditingId(null);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to update tuning");
+        }
+        setLoading(false);
+    };
+
     if (!user) return null;
 
     return (
@@ -105,16 +140,66 @@ export function TuningManager() {
                     {savedTunings.map(t => (
                         <div
                             key={t.id}
-                            onClick={() => setPreset(t)}
-                            className="group flex items-center justify-between p-2 hover:bg-slate-800 rounded cursor-pointer border border-transparent hover:border-slate-700"
+                            onClick={() => {
+                                if (editingId !== t.id) setPreset(t);
+                            }}
+                            className={clsx(
+                                "group flex flex-col p-2 rounded cursor-pointer border border-transparent transition",
+                                editingId === t.id ? "bg-slate-800 border-slate-700" : "hover:bg-slate-800 hover:border-slate-700"
+                            )}
                         >
-                            <span className="text-sm text-indigo-300 font-medium truncate">{t.name}</span>
-                            <button
-                                onClick={(e) => handleDelete(t.id!, e)}
-                                className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 text-slate-600 transition"
-                            >
-                                <Trash2 className="w-3 h-3" />
-                            </button>
+                            {editingId === t.id ? (
+                                <div className="space-y-2 flex flex-col" onClick={e => e.stopPropagation()}>
+                                    <input
+                                        type="text"
+                                        value={editName}
+                                        onChange={e => setEditName(e.target.value)}
+                                        className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                        placeholder="Tuning Name"
+                                    />
+                                    <textarea
+                                        value={editDescription}
+                                        onChange={e => setEditDescription(e.target.value)}
+                                        className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-300 resize-none h-16 focus:outline-none focus:border-indigo-500"
+                                        placeholder="Description (optional)"
+                                    />
+                                    <div className="flex justify-end gap-2 mt-1">
+                                        <button onClick={handleEditCancel} className="p-1 hover:text-slate-200 text-slate-400 transition" title="Cancel">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={(e) => handleEditSave(t.id!, e)} className="p-1 hover:text-green-400 text-slate-400 transition" title="Save" disabled={loading}>
+                                            <Check className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="text-sm text-indigo-300 font-medium truncate">{t.name}</span>
+                                            {t.description && (
+                                                <span className="text-xs text-slate-400 mt-0.5 line-clamp-2">{t.description}</span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition whitespace-nowrap shrink-0 ml-2">
+                                            <button
+                                                onClick={(e) => handleEditStart(t, e)}
+                                                className="p-1.5 hover:text-indigo-400 text-slate-500 transition"
+                                                title="Edit Tuning"
+                                            >
+                                                <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleDelete(t.id!, e)}
+                                                className="p-1.5 hover:text-red-400 text-slate-500 transition"
+                                                title="Delete Tuning"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ))}
                 </div>

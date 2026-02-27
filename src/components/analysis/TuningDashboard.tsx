@@ -195,37 +195,41 @@ function IntervalMatrix({ intervals, notes }: { intervals: AdjacentInterval[]; n
 
             {/* Visual Matrix */}
             <div className="flex items-center gap-1 overflow-x-auto pb-2">
-                {notes.map((note, i) => (
-                    <div key={i} className="flex items-center">
-                        {/* Note */}
-                        <div className="flex flex-col items-center">
-                            <span className="text-[10px] text-slate-500 mb-1">
-                                {i + 1}
-                            </span>
-                            <div className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg min-w-[48px] text-center">
-                                <span className="font-mono font-bold text-white text-sm">
-                                    {note.replace(/\d/, '')}
-                                </span>
-                                <span className="font-mono text-slate-400 text-xs">
-                                    {note.match(/\d/)?.[0]}
-                                </span>
-                            </div>
-                        </div>
+                {[...notes].reverse().map((note, index) => {
+                    const originalIndex = notes.length - 1 - index;
 
-                        {/* Interval Arrow (except after last note) */}
-                        {i < intervals.length && (
-                            <div className="flex flex-col items-center mx-1">
-                                <ArrowRight className="w-3 h-3 text-slate-600" />
-                                <div className={clsx(
-                                    "px-2 py-1 rounded border text-xs font-mono font-bold",
-                                    qualityColors[intervals[i].quality]
-                                )}>
-                                    {intervals[i].interval}
+                    return (
+                        <div key={originalIndex} className="flex items-center">
+                            {/* Note */}
+                            <div className="flex flex-col items-center">
+                                <span className="text-[10px] text-slate-500 mb-1">
+                                    {originalIndex + 1}
+                                </span>
+                                <div className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg min-w-[48px] text-center">
+                                    <span className="font-mono font-bold text-white text-sm">
+                                        {note.replace(/\d/, '')}
+                                    </span>
+                                    <span className="font-mono text-slate-400 text-xs">
+                                        {note.match(/\d/)?.[0]}
+                                    </span>
                                 </div>
                             </div>
-                        )}
-                    </div>
-                ))}
+
+                            {/* Interval Arrow (except after last note) */}
+                            {index < intervals.length && (
+                                <div className="flex flex-col items-center mx-1">
+                                    <ArrowRight className="w-3 h-3 text-slate-600" />
+                                    <div className={clsx(
+                                        "px-2 py-1 rounded border text-xs font-mono font-bold",
+                                        qualityColors[intervals[index].quality]
+                                    )}>
+                                        {intervals[index].interval}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Detailed List */}

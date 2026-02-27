@@ -1,5 +1,5 @@
 import { db } from './config';
-import { collection, addDoc, getDocs, query, where, Timestamp, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { Tuning, Note } from '@/types/music';
 import { Progression, ChordVoicing } from '@/lib/music/composer';
 import { Tablature, TablatureBar } from '@/lib/music/tablature';
@@ -75,6 +75,20 @@ export const DB = {
             await deleteDoc(doc(db, "tunings", tuningId));
         } catch (e) {
             console.error("Error deleting tuning", e);
+            throw e;
+        }
+    },
+
+    async updateTuning(tuningId: string, updates: Partial<Tuning>) {
+        try {
+            const docRef = doc(db, "tunings", tuningId);
+            const updateData: any = { ...updates };
+            if (updates.strings) {
+                updateData.strings = updates.strings.map(s => JSON.parse(JSON.stringify(s)));
+            }
+            await updateDoc(docRef, updateData);
+        } catch (e) {
+            console.error("Error updating tuning", e);
             throw e;
         }
     },

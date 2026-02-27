@@ -169,18 +169,26 @@ const MOOD_PATTERNS: MoodPattern[] = [
 export function calculateAdjacentIntervals(tuningNotes: string[]): AdjacentInterval[] {
     const intervals: AdjacentInterval[] = [];
 
-    for (let i = 0; i < tuningNotes.length - 1; i++) {
-        const fromNote = tuningNotes[i];
-        const toNote = tuningNotes[i + 1];
+    // Traverse from bottom string (highest index) to top string (index 0)
+    for (let i = tuningNotes.length - 1; i > 0; i--) {
+        const fromString = i;
+        const toString = i - 1;
+        const fromNote = tuningNotes[fromString];
+        const toNote = tuningNotes[toString];
 
-        // Calculate interval (from higher string to lower string)
-        const dist = Interval.distance(toNote, fromNote);
-        const simplified = Interval.simplify(dist);
-        const semitones = Interval.semitones(dist) || 0;
+        // Calculate interval from lower string to higher string
+        const dist = Interval.distance(fromNote, toNote);
+        const semitonesRaw = Interval.semitones(dist) || 0;
+        const semitones = Math.abs(semitonesRaw);
+
+        // Map purely by semitone distance to fix enharmonic spelling issues (e.g. A#->F = 5P, not 6d)
+        // If it's an octave (12), keep it. Otherwise, wrap around the octave.
+        const simplifiedSemitones = semitones > 12 ? semitones % 12 : semitones;
+        const simplified = Interval.fromSemitones(simplifiedSemitones) || "1P";
 
         intervals.push({
-            fromString: i,
-            toString: i + 1,
+            fromString,
+            toString,
             fromNote,
             toNote,
             interval: simplified,
