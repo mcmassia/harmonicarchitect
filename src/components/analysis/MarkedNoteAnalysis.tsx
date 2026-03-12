@@ -5,7 +5,7 @@ import { Music2, Sparkles, Trash2, MousePointer2, Save } from 'lucide-react';
 import { clsx } from "clsx";
 import { StringGroupAnalysis } from '@/types/music';
 import { useMemo, useState, useEffect } from 'react';
-import { Note, Interval } from "@tonaljs/tonal";
+import { Note } from "@tonaljs/tonal";
 import { useDiagramStore } from '@/store/diagramStore';
 import { useTuningStore } from '@/store/tuningStore';
 
@@ -60,19 +60,16 @@ export function MarkedNoteAnalysis({ onSelect, selectedAnalysis }: MarkedNoteAna
         }
     }, [selectionMode, markedNotes, markedPositions]);
 
+    // Semitone-to-display-interval lookup (same as in Fretboard)
+    const SEMITONE_DISPLAY = ['1', 'b2', '2', 'b3', '3', '4', 'b5', '5', 'b6', '6', 'b7', '7'];
+
     // Helper to get display name for a note (Note name or Interval if tonic is set and display mode is intervals)
     const getNoteDisplayName = (note: string) => {
         if (noteDisplayMode === 'intervals' && tonic) {
-            // Calculate interval relative to tonic
-            try {
-                const interval = Interval.distance(tonic, note);
-                if (interval) {
-                    // M3 -> 3, m3 -> b3, P5 -> 5, etc.
-                    return interval.replace('M', '').replace('P', '').replace('m', 'b').replace('d', 'bb').replace('A', '#');
-                }
-            } catch (e) {
-                return note;
-            }
+            const rootMidi = Note.midi(tonic + '4') || 0;
+            const noteMidi = Note.midi(note + '4') || 0;
+            const semitones = ((noteMidi - rootMidi) % 12 + 12) % 12;
+            return SEMITONE_DISPLAY[semitones];
         }
         return note;
     };

@@ -5,7 +5,7 @@ import { ChordVoicing } from '@/lib/music/composer';
 import { Copy, Download, Check, Grid3X3, List } from 'lucide-react';
 import { useState } from 'react';
 import { clsx } from 'clsx';
-import { Note, Interval } from '@tonaljs/tonal';
+import { Note } from '@tonaljs/tonal';
 import { useTuningStore } from '@/store/tuningStore';
 
 interface TablatureViewProps {
@@ -13,6 +13,9 @@ interface TablatureViewProps {
 }
 
 type ViewMode = 'diagrams' | 'inline';
+
+// Semitone-to-display-interval lookup
+const SEMITONE_DISPLAY = ['1', 'b2', '2', 'b3', '3', '4', 'b5', '5', 'b6', '6', 'b7', '7'];
 
 export function TablatureView({ tablature }: TablatureViewProps) {
     const [copied, setCopied] = useState(false);
@@ -327,8 +330,10 @@ function ChordDiagram({ voicing, tuning, index, displayMode }: ChordDiagramProps
                                 const rootMatch = voicing.chord.match(/^([A-G][#b]?)/);
                                 if (rootMatch) {
                                     const root = rootMatch[1];
-                                    const interval = Interval.distance(root, noteName);
-                                    label = interval.replace('M', '').replace('P', '').replace('m', 'b').replace('d', 'bb').replace('A', '#');
+                                    const rootMidi = Note.midi(root + '4') || 0;
+                                    const noteMidi = Note.midi(noteName + '4') || 0;
+                                    const semitones = ((noteMidi - rootMidi) % 12 + 12) % 12;
+                                    label = SEMITONE_DISPLAY[semitones];
                                 }
                             }
                         }

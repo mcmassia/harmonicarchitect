@@ -1,5 +1,37 @@
-import { Note, Chord, Interval } from "@tonaljs/tonal";
+import { Note, Chord } from "@tonaljs/tonal";
 import { StringGroupAnalysis } from "@/types/music";
+
+// Maps semitone distance (0-11) to standard tonal interval names.
+// This avoids enharmonic spelling issues with Interval.distance()
+// (e.g., Interval.distance('E', 'Ab') → '4d' instead of '3M').
+const SEMITONE_TO_INTERVAL: string[] = [
+    '1P',  // 0  - Perfect Unison
+    '2m',  // 1  - Minor 2nd
+    '2M',  // 2  - Major 2nd
+    '3m',  // 3  - Minor 3rd
+    '3M',  // 4  - Major 3rd
+    '4P',  // 5  - Perfect 4th
+    '5d',  // 6  - Diminished 5th / Tritone
+    '5P',  // 7  - Perfect 5th
+    '6m',  // 8  - Minor 6th
+    '6M',  // 9  - Major 6th
+    '7m',  // 10 - Minor 7th
+    '7M',  // 11 - Major 7th
+];
+
+/**
+ * Calculate the interval between two notes using semitone distance.
+ * Returns a standard tonal interval name (e.g., '3M', '5P').
+ */
+function semitoneInterval(from: string, to: string): string {
+    // Append octave '4' if the note doesn't already have one (pitch class only)
+    const fromWithOctave = /\d/.test(from) ? from : from + '4';
+    const toWithOctave = /\d/.test(to) ? to : to + '4';
+    const fromMidi = Note.midi(fromWithOctave) || 0;
+    const toMidi = Note.midi(toWithOctave) || 0;
+    const semitones = ((toMidi - fromMidi) % 12 + 12) % 12;
+    return SEMITONE_TO_INTERVAL[semitones];
+}
 
 function getEmotionalTag(chordName: string, intervals: string[]): string {
     const name = chordName || "";
@@ -54,10 +86,7 @@ function analyzeGroup(groupNotes: string[], indices: number[], results: StringGr
     const rootPc = Note.pitchClass(root);
 
     // Calculate intervals relative to root for ALL notes including root
-    const intervals = groupNotes.map(n => {
-        const dist = Interval.distance(root, n);
-        return Interval.simplify(dist);
-    });
+    const intervals = groupNotes.map(n => semitoneInterval(root, n));
 
     // Use pattern matching to detect chord type based on intervals
     const chordType = detectChordTypeFromIntervals(intervals);
@@ -224,8 +253,7 @@ export function reanalyzeGroup(original: StringGroupAnalysis, newRoot: string): 
     // 1. Calculate intervals relative to the new Root
     const intervals = original.notes.map(n => {
         const notePc = Note.pitchClass(n);
-        const dist = Interval.distance(rootPc, notePc);
-        return Interval.simplify(dist);
+        return semitoneInterval(rootPc, notePc);
     });
 
     // 2. Detect Chord Type using direct pattern matching
@@ -278,8 +306,7 @@ export function analyzeMarkedNotes(pitchClasses: string[]): StringGroupAnalysis[
         // Calculate intervals from this root to all other notes (ASCENDING PC intervals)
         const intervals = pitchClasses.map(note => {
             const pc = Note.pitchClass(note);
-            const dist = Interval.distance(rootPc, pc);
-            return Interval.simplify(dist);
+            return semitoneInterval(rootPc, pc);
         });
 
         // Detect chord type
@@ -365,8 +392,7 @@ export function detectInversion(notes: string[], root: string): string {
     }
 
     // Calculate interval from Root to Bass
-    const dist = Interval.distance(rootPc, bassPc);
-    const simpleDist = Interval.simplify(dist); // e.g. "3M", "5P"
+    const simpleDist = semitoneInterval(rootPc, bassPc);
 
     // Map interval to inversion name
     // 3rd (Major or Minor) -> 1st Inversion
