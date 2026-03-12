@@ -4,13 +4,16 @@ import { useTuningStore } from '@/store/tuningStore';
 import { useMarkedNotesStore } from '@/store/markedNotesStore';
 import { useChordScaleStore } from '@/store/chordScaleStore';
 import { useMemo } from 'react';
-import { Note, Interval } from "@tonaljs/tonal";
+import { Note } from "@tonaljs/tonal";
 import { StringGroupAnalysis } from '@/types/music';
 import { Settings2, Music, Hash, MousePointer2, BoxSelect } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const FRET_COUNT = 15; // Number of frets to render
 const STRING_SPACING = 60; // Increased form 30
+
+// Semitone-to-interval label lookup (index = semitones from root)
+const SEMITONE_INTERVALS = ['1', 'b2', '2', 'b3', '3', '4', 'b5', '5', 'b6', '6', 'b7', '7'];
 
 interface FretboardProps {
     highlightedNotes?: string[]; // Legacy support or just use analysis.notes
@@ -404,16 +407,12 @@ export function Fretboard({ highlightedNotes = [], analysis }: FretboardProps) {
                                                     }
 
                                                     if (root) {
-                                                        // Calculate interval using the display-corrected pitch class
-                                                        const interval = Interval.distance(root, displayPc);
-                                                        // Simplify interval (e.g., "3M" -> "3", "3m" -> "b3")
-                                                        // 'd' (diminished) is often displayed as 'bb' in 7ths, but for 5d -> b5. 
-                                                        // Adjusted logic: M->'', P->'', m->'b', d->'b' (common jazz) or 'bb'? 
-                                                        // Let's stick to existing logic but maybe consider 'd' handling if needed.
-                                                        // Existing was: .replace('d', 'bb'). 
-                                                        // With correct spelling, we shouldn't get weird diminished intervals like '4d' (4bb) 
-                                                        // for a Major 3rd.
-                                                        return interval.replace('M', '').replace('P', '').replace('m', 'b').replace('d', 'bb').replace('A', '#');
+                                                        // Use semitone distance to avoid enharmonic spelling issues
+                                                        // (e.g., Interval.distance('C', 'D#') gives '2A' instead of 'b3')
+                                                        const rootMidi = Note.midi(root + '4') || 0;
+                                                        const noteMidi = Note.midi(displayPc + '4') || 0;
+                                                        const semitones = ((noteMidi - rootMidi) % 12 + 12) % 12;
+                                                        return SEMITONE_INTERVALS[semitones];
                                                     }
                                                 }
                                                 return displayPc;
